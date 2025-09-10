@@ -62,7 +62,7 @@ class CdkMpsGroupStack(Stack):
         #Creation of Lambda Function using a python file in lambda folder
         lambda_f = lambda_python.PythonFunction(
             self, "RequestLambdaFunction",
-            entry=str(Path(__file__).parent.parent / "Lambda"),
+            entry=str(Path(__file__).parent.parent / "lambda"),
             runtime=_lambda.Runtime.PYTHON_3_11,
             index="lambda_function.py",
             handler="handler"
