@@ -45,7 +45,9 @@ jobs:
         pip install -r requirements.txt
 
     - name: CDK Bootstrap (optional, only first time per environment)
-      run: cdk bootstrap
+      run: |
+        source .venv/bin/activate
+        cdk bootstrap
 
     - name: Deploy CDK stack
       run: cdk deploy --require-approval never
