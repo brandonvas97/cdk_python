@@ -50,4 +50,6 @@ jobs:
         cdk bootstrap
 
     - name: Deploy CDK stack
-      run: cdk deploy --require-approval never
+      run: |
+        source .venv/bin/activate
+        cdk deploy --require-approval never
