@@ -1,0 +1,3 @@
+pyarrow
+requests
+s3fs
