@@ -8,7 +8,8 @@ from aws_cdk import (
     aws_iam as iam,
     aws_lakeformation as lf,
     aws_lambda_python_alpha as lambda_python,
-    RemovalPolicy
+    RemovalPolicy,
+    Duration
     # aws_sqs as sqs,
 )
 from constructs import Construct
@@ -65,7 +66,8 @@ class CdkMpsGroupStack(Stack):
             entry=str(Path(__file__).parent.parent / "lambda"),
             runtime=_lambda.Runtime.PYTHON_3_11,
             index="lambda_function.py",
-            handler="handler"
+            handler="handler",
+            timeout=Duration.seconds(30)
         )
 
         bucket.grant_write(lambda_f) #Give write permissions to the bucket
