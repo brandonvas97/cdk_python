@@ -250,7 +250,8 @@ class CdkMpsGroupStack(Stack):
                     output_location=f"s3://{athena_results_bucket.bucket_name}/results/"
                 ),
                 enforce_work_group_configuration=True,  # Force all queries use this configuration
-            )
+            ),
+            recursive_delete_option=True #Delete the workgroup history
         )
 
         #Give permissions to athena user to write in the s3 bucket
