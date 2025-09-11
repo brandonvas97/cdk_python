@@ -75,7 +75,7 @@ class CdkMpsGroupStack(Stack):
             )
         ])
 
-        # Use AwsCustomResource for removing permissions to IAMAllowedPrincipals
+        # Use AwsCustomResource for removing permissions to IAMAllowedPrincipals in Data permissions
         cr.AwsCustomResource(
             self, "DisableIamOnlyAccessControl",
             on_create=cr.AwsSdkCall(
@@ -232,6 +232,20 @@ class CdkMpsGroupStack(Stack):
             permissions=["DESCRIBE"]
         )
         
+        #Give permissions on the Database for user that is deploying(In this case root)
+        lf.CfnPermissions(
+            self, "UserDatabasePermissions",
+            data_lake_principal=lf.CfnPermissions.DataLakePrincipalProperty(
+                data_lake_principal_identifier=f"arn:aws:iam::{self.account}:root"
+            ),
+            resource=lf.CfnPermissions.ResourceProperty(
+                database_resource=lf.CfnPermissions.DatabaseResourceProperty(
+                    name=glue_db.database_input.name,
+                    catalog_id=self.account
+                )
+            ),
+            permissions=["DESCRIBE"]
+        ).add_dependency(glue_db)
 
         #Give permissions for athena user to specific columns of the table
         lf_column_permissions = lf.CfnPermissions(
@@ -253,6 +267,26 @@ class CdkMpsGroupStack(Stack):
 
         lf_column_permissions.add_dependency(glue_table) #We add dependency with the table
         lf_column_permissions.apply_removal_policy(RemovalPolicy.RETAIN) #The columns permissions are erased before, so it's not necessary to include it in the destroy process
+        
+        #Give permissions on the table for user that is deploying(In this case root)
+        lf_column_permissions_admin = lf.CfnPermissions(
+            self, "UserTablePermissions",
+            data_lake_principal=lf.CfnPermissions.DataLakePrincipalProperty(
+                data_lake_principal_identifier=f"arn:aws:iam::{self.account}:root"
+            ),
+            resource=lf.CfnPermissions.ResourceProperty(
+                table_resource=lf.CfnPermissions.TableResourceProperty(
+                    database_name=glue_db.database_input.name,
+                    name=glue_table.table_input.name,  #Table name
+                    catalog_id=self.account
+                )
+            ),
+            permissions=["SELECT"],
+            permissions_with_grant_option=[]
+        )
+
+        lf_column_permissions_admin.add_dependency(glue_table)
+        lf_column_permissions_admin.apply_removal_policy(RemovalPolicy.RETAIN)
         
         #Configuration of Athena workgroup
         athena_workgroup = athena.CfnWorkGroup(
