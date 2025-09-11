@@ -52,4 +52,5 @@ jobs:
     - name: Deploy CDK stack
       run: |
         source .venv/bin/activate
+        cdk synth
         cdk deploy --require-approval never
