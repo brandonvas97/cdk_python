@@ -218,6 +218,8 @@ class CdkMpsGroupStack(Stack):
             iam.ManagedPolicy.from_aws_managed_policy_name("AmazonAthenaFullAccess")
         )
 
+        bucket.grant_read(athena_user)
+
         #Give permissions for the athena user to the database
         lf.CfnPermissions(
             self, "AthenaUserDatabasePermissions",
