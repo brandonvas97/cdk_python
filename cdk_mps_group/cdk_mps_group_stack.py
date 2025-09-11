@@ -75,7 +75,7 @@ class CdkMpsGroupStack(Stack):
             )
         ])
 
-        # Use AwsCustomResource to remove Use only IAM access control for new databases and Use only IAM access control for new tables in new databases in Data Catalog settings
+        # Use AwsCustomResource for removing permissions to IAMAllowedPrincipals
         cr.AwsCustomResource(
             self, "DisableIamOnlyAccessControl",
             on_create=cr.AwsSdkCall(
@@ -83,8 +83,22 @@ class CdkMpsGroupStack(Stack):
                 action="putDataLakeSettings",
                 parameters={
                     "DataLakeSettings": {
-                        "CreateDatabaseDefaultPermissions": [],
-                        "CreateTableDefaultPermissions": []
+                        "CreateDatabaseDefaultPermissions": [
+                            {
+                                "Principal": {
+                                    "DataLakePrincipalIdentifier": "IAM_ALLOWED_PRINCIPALS"
+                                },
+                                "Permissions": []
+                            }
+                        ],
+                        "CreateTableDefaultPermissions": [
+                            {
+                                "Principal": {
+                                    "DataLakePrincipalIdentifier": "IAM_ALLOWED_PRINCIPALS"
+                                },
+                                "Permissions": []
+                            }
+                        ]
                     }
                 },
                 physical_resource_id=cr.PhysicalResourceId.of("LakeFormationSettingsUpdated")
@@ -141,22 +155,6 @@ class CdkMpsGroupStack(Stack):
                 )
             )
         )
-
-        #Remove permissions to IAMAllowedPrincipals
-        lf.CfnPermissions(
-            scope=self,
-            id="RevokeIAMAllowedPrincipalsDatabase",
-            data_lake_principal=lf.CfnPermissions.DataLakePrincipalProperty(
-                data_lake_principal_identifier="IAM_ALLOWED_PRINCIPALS"
-            ),
-            permissions=[],
-            permissions_with_grant_option=[],
-            resource=lf.CfnPermissions.ResourceProperty(
-                database_resource=lf.CfnPermissions.DatabaseResourceProperty(
-                    name=glue_db.database_input.name
-                )
-            )
-        ).add_dependency(glue_db)
 
         #Glue IAM Role to give permissions to the Crawler
         glue_role = iam.Role(
