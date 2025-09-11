@@ -7,6 +7,7 @@ from aws_cdk import (
     aws_athena as athena,
     aws_iam as iam,
     aws_lakeformation as lf,
+    custom_resources as cr,
     aws_lambda_python_alpha as lambda_python,
     RemovalPolicy,
     Duration
@@ -36,14 +37,6 @@ class CdkMpsGroupStack(Stack):
             auto_delete_objects=True
         )
 
-        #Upload the example parquet
-        #s3_deploy.BucketDeployment(
-        #    self, "DeployParquetExample",
-        #    sources=[s3_deploy.Source.asset(str(Path(__file__).parent.parent / "parquet_schema"))],  #Route where is the example parquet
-        #    destination_bucket=bucket,
-        #    destination_key_prefix="results/"
-        #)
-
         #Creation of S3 bucket for Athena queries
         athena_results_bucket = s3.Bucket(
             self, "AthenaResultsBucket",
@@ -51,14 +44,6 @@ class CdkMpsGroupStack(Stack):
             removal_policy=RemovalPolicy.DESTROY,
             auto_delete_objects=True
         )
-
-        #lambda_f = _lambda.Function(
-        #    self, "RequestLambdaFunction",
-        #    runtime=_lambda.Runtime.PYTHON_3_11,
-        #    handler="lambda_function.handler",
-        #    code=_lambda.Code.from_asset("lambda_package.zip"),
-        #    timeout=Duration.seconds(30)
-        #)
 
         #Creation of Lambda Function using a python file in lambda folder
         lambda_f = lambda_python.PythonFunction(
@@ -71,6 +56,41 @@ class CdkMpsGroupStack(Stack):
         )
 
         bucket.grant_write(lambda_f) #Give write permissions to the bucket
+
+        #Assign Admin to the user that is proprietary of access and secret key used in cdk deployment
+        lf.CfnDataLakeSettings(
+            self, "LakeFormationSettings",
+            admins=[
+                lf.CfnDataLakeSettings.DataLakePrincipalProperty(
+                    data_lake_principal_identifier=f"arn:aws:iam::{self.account}:root"
+                )
+            ]
+        )
+
+        #Give permissions for AwsCustomResource to change the Lake Formation configuration
+        policy = cr.AwsCustomResourcePolicy.from_statements([
+            iam.PolicyStatement(
+                actions=["lakeformation:PutDataLakeSettings"],
+                resources=["*"]
+            )
+        ])
+
+        # Use AwsCustomResource to remove Use only IAM access control for new databases and Use only IAM access control for new tables in new databases in Data Catalog settings
+        cr.AwsCustomResource(
+            self, "DisableIamOnlyAccessControl",
+            on_create=cr.AwsSdkCall(
+                service="LakeFormation",
+                action="putDataLakeSettings",
+                parameters={
+                    "DataLakeSettings": {
+                        "CreateDatabaseDefaultPermissions": [],
+                        "CreateTableDefaultPermissions": []
+                    }
+                },
+                physical_resource_id=cr.PhysicalResourceId.of("LakeFormationSettingsUpdated")
+            ),
+            policy=policy
+        )
 
 
         #Creation of Glue database
@@ -121,6 +141,23 @@ class CdkMpsGroupStack(Stack):
                 )
             )
         )
+
+        #Remove permissions to IAMAllowedPrincipals
+        lf.CfnPermissions(
+            self, "RevokeIAMAllowedPrincipalsOnTable",
+            data_lake_principal=lf.CfnPermissions.DataLakePrincipalProperty(
+                data_lake_principal_identifier="IAM_ALLOWED_PRINCIPALS"
+            ),
+            resource=lf.CfnPermissions.ResourceProperty(
+                table_resource=lf.CfnPermissions.TableResourceProperty(
+                    name=glue_table.table_input.name,
+                    database_name=glue_db.database_input.name,
+                    catalog_id=self.account
+                )
+            ),
+            permissions=[],
+            permissions_with_grant_option=[]
+        ).add_dependency(glue_table)
 
         #Glue IAM Role to give permissions to the Crawler
         glue_role = iam.Role(
@@ -173,14 +210,6 @@ class CdkMpsGroupStack(Stack):
             configuration='{"Version":1.0,"Grouping":{"TableGroupingPolicy":"CombineCompatibleSchemas"}}' #If there are multiple files with the same structure, these are used in only one table
         )
 
-        #Create admin-user
-        #admin_user = iam.User(self, "AdminUser", user_name="admin-user")
-
-        #Give Permissions for admin user
-        #admin_user.add_managed_policy(
-        #    iam.ManagedPolicy.from_aws_managed_policy_name("AdministratorAccess")
-        #)
-
         #Create the athena user
         athena_user = iam.User(self, "AthenaUser", user_name="athena-user")
 
@@ -204,22 +233,6 @@ class CdkMpsGroupStack(Stack):
             permissions=["DESCRIBE"]
         )
         
-        
-        #Give permissions for athena user to tables
-        lf.CfnPermissions(
-            self, "AthenaUserTablePermissions",
-            data_lake_principal=lf.CfnPermissions.DataLakePrincipalProperty(
-                data_lake_principal_identifier=athena_user.user_arn
-            ),
-            resource=lf.CfnPermissions.ResourceProperty(
-                table_resource=lf.CfnPermissions.TableResourceProperty(
-                    database_name=glue_db.database_input.name,
-                    name=glue_table.table_input.name,
-                    catalog_id=self.account
-                )
-            ),
-            permissions=["SELECT", "DESCRIBE"]
-        ).add_dependency(glue_table) #We add dependency with the table  
 
         #Give permissions for athena user to specific columns of the table
         lf_column_permissions = lf.CfnPermissions(
@@ -235,7 +248,8 @@ class CdkMpsGroupStack(Stack):
                     catalog_id=self.account
                 )
             ),
-            permissions=["SELECT"]
+            permissions=["SELECT"],
+            permissions_with_grant_option=[]
         )
 
         lf_column_permissions.add_dependency(glue_table) #We add dependency with the table
