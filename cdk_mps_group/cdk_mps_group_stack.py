@@ -144,20 +144,19 @@ class CdkMpsGroupStack(Stack):
 
         #Remove permissions to IAMAllowedPrincipals
         lf.CfnPermissions(
-            self, "RevokeIAMAllowedPrincipalsOnTable",
+            scope=self,
+            id="RevokeIAMAllowedPrincipalsDatabase",
             data_lake_principal=lf.CfnPermissions.DataLakePrincipalProperty(
                 data_lake_principal_identifier="IAM_ALLOWED_PRINCIPALS"
             ),
-            resource=lf.CfnPermissions.ResourceProperty(
-                table_resource=lf.CfnPermissions.TableResourceProperty(
-                    name=glue_table.table_input.name,
-                    database_name=glue_db.database_input.name,
-                    catalog_id=self.account
-                )
-            ),
             permissions=[],
-            permissions_with_grant_option=[]
-        ).add_dependency(glue_table)
+            permissions_with_grant_option=[],
+            resource=lf.CfnPermissions.ResourceProperty(
+                database_resource=lf.CfnPermissions.DatabaseResourceProperty(
+                    name=glue_db.database_input.name
+                )
+            )
+        ).add_dependency(glue_db)
 
         #Glue IAM Role to give permissions to the Crawler
         glue_role = iam.Role(
