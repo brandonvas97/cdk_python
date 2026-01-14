@@ -1,0 +1,17 @@
+[
+  {
+    "fecha": "2026-01-01T10:00:00",
+    "sensor": "sensor_1",
+    "valor": 23.5
+  },
+  {
+    "fecha": "2026-01-01T10:05:00",
+    "sensor": "sensor_1",
+    "valor": 24.1
+  },
+  {
+    "fecha": "2026-01-01T10:10:00",
+    "sensor": "sensor_2",
+    "valor": 19.8
+  }
+]
