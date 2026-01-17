@@ -1,6 +1,4 @@
-{
-  "resource_id": "83ade634-ff9c-43a7-85de-0da8c5820182",
-  "fields": [
+[
     {
       "id": "column_name_1",
       "type": "text"
@@ -13,18 +11,4 @@
       "id": "column_name_3",
       "type": "timestamp"
     }
-  ],
-  "records": [
-    {
-      "column_name_1": "row1_value1",
-      "column_name_2": 1,
-      "column_name_3": "2024-01-16T21:38:00Z"
-    },
-    {
-      "column_name_1": "row2_value1",
-      "column_name_2": 2,
-      "column_name_3": "2024-01-16T21:39:00Z"
-    }
-  ],
-  "force": true
-}
+]
