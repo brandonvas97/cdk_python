@@ -1,6 +1,5 @@
 id,nombre,edad,ciudad,fecha_registro,activo
 1,Juan Perez,32,Barranquilla,2024-01-15,true
 2,Ana Gomez,28,Medellin,2024-02-01,true
-
 3,Carlos Ruiz,45,Bogota,2024-02-20,false
 4,Carlos Ruiz,45,Bogota,2024-02-20,false
